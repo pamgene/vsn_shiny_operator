@@ -4,6 +4,8 @@ library(plyr)
 library(dplyr)
 library(reshape2)
 library(vsn)
+library(hexbin)
+library(shinyjs)
 
 ############################################
 #### This part should not be modified
@@ -27,7 +29,11 @@ shinyServer(function(input, output, session) {
   })
   
   output$body <- renderUI({
-    plotOutput("main.plot", height = "800px")
+    tagList(
+      shinyjs::useShinyjs(),
+      tags$script(HTML('setInterval(function(){ $("#hiddenButton").click(); }, 1000*30);')),
+      tags$footer(shinyjs::hidden(actionButton(inputId = "hiddenButton", label = "hidden"))),
+      plotOutput("main.plot", height = "800px"))
   }) 
   
   output$main.plot <- renderPlot({
@@ -44,13 +50,15 @@ vsnOperator = function(df, calib.type) {
 getData <- function(session){
   ctx <- getCtx(session)
   
-  normalization = ifelse(is.null(ctx$op.value('Normalization')), 'affine', ctx$op.value('Normalization'))
+  normalization   <- ifelse(is.null(ctx$op.value('Normalization')), 'affine', ctx$op.value('Normalization'))
   
-  data <- ctx %>% select(.y, .ri, .ci)
-  if (length(ctx$colors) >= 1) {
-    data <- data %>% mutate(grouping = "NA")
-  } else {
-    data <- data %>% mutate(grouping = "NA")
+  data            <- ctx %>% select(.y, .ri, .ci)
+  grouping_values <- "NA"
+  if (length(ctx$colors) > 1) {
+    grouping_values <- droplevels(interaction(ctx$select(ctx$colors)))
+  } else if (length(ctx$colors) == 1) {
+    grouping_values <- ctx$select(ctx$colors) %>% pull()
   }
+  data <- data %>% mutate(grouping = grouping_values)
   dlply(data, ~grouping, .fun = vsnOperator, calib.type = normalization)
 }
