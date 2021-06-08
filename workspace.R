@@ -1,64 +1,60 @@
 library(shiny)
 library(tercen)
+library(plyr)
 library(dplyr)
-library(tidyr)
+library(reshape2)
+library(vsn)
 
 ############################################
 #### This part should not be included in ui.R and server.R scripts
 getCtx <- function(session) {
-  ctx <- tercenCtx(stepId = "9b7619c7-4d66-49fa-9bb3-2b06209e58e4",
-                   workflowId = "f81d245ef22a2ff192ed2533a6002ec3")
+  # Set appropriate options
+  #options("tercen.serviceUri"="http://tercen:5400/api/v1/")
+  #options("tercen.workflowId"= "4133245f38c1411c543ef25ea3020c41")
+  #options("tercen.stepId"= "2b6d9fbf-25e4-4302-94eb-b9562a066aa5")
+  #options("tercen.username"= "admin")
+  #options("tercen.password"= "admin")
+  ctx <- tercenCtx()
   return(ctx)
 }
 ####
 ############################################
 
-ui <- shinyUI(fluidPage(
-  
-  titlePanel("Histogram"),
-  
-  sidebarPanel(
-    sliderInput("plotWidth", "Plot width (px)", 200, 2000, 500),
-    sliderInput("plotHeight", "Plot height (px)", 200, 2000, 500),
-  ),
-  
-  mainPanel(
-    uiOutput("reacOut")
-  )
-  
-))
+ui <- shinyUI(uiOutput("body"))
 
 server <- shinyServer(function(input, output, session) {
   
   dataInput <- reactive({
-    getValues(session)
+    getData(session)
   })
   
-  output$reacOut <- renderUI({
-    plotOutput(
-      "main.plot",
-      height = input$plotHeight,
-      width = input$plotWidth
-    )
+  output$body <- renderUI({
+    plotOutput("main.plot", height = "800px")
   }) 
   
   output$main.plot <- renderPlot({
-    values <- dataInput()
-    data <- values$data$.y
-    hist(data)
+    data <- dataInput()
+    lapply(data, FUN = function(vsn) { meanSdPlot(vsn) } )
   })
   
 })
 
-getValues <- function(session){
+vsnOperator = function(df, calib.type) {
+  vsn2(as.matrix(acast(df, .ri ~ .ci, value.var = ".y")), calib = calib.type)
+}
+
+getData <- function(session){
   ctx <- getCtx(session)
-  values <- list()
 
-  values$data <- ctx %>% select(.y, .ri, .ci) %>%
-    group_by(.ci, .ri) %>%
-    summarise(.y = mean(.y)) # take the mean of multiple values per cell
-
-  return(values)
+  normalization = ifelse(is.null(ctx$op.value('Normalization')), 'affine', ctx$op.value('Normalization'))
+  
+  data <- ctx %>% select(.y, .ri, .ci)
+  if (length(ctx$colors) >= 1) {
+    data <- data %>% mutate(grouping = "NA")
+  } else {
+    data <- data %>% mutate(grouping = "NA")
+  }
+  dlply(data, ~grouping, .fun = vsnOperator, calib.type = normalization)
 }
 
 runApp(shinyApp(ui, server))  

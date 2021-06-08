@@ -1,7 +1,9 @@
 library(shiny)
 library(tercen)
+library(plyr)
 library(dplyr)
-library(tidyr)
+library(reshape2)
+library(vsn)
 
 ############################################
 #### This part should not be modified
@@ -21,33 +23,34 @@ getCtx <- function(session) {
 shinyServer(function(input, output, session) {
   
   dataInput <- reactive({
-    getValues(session)
+    getData(session)
   })
   
-  output$reacOut <- renderUI({
-    plotOutput(
-      "main.plot",
-      height = input$plotHeight,
-      width = input$plotWidth
-    )
+  output$body <- renderUI({
+    plotOutput("main.plot", height = "800px")
   }) 
   
   output$main.plot <- renderPlot({
-    values <- dataInput()
-    data <- values$data$.y
-    hist(data)
+    data <- dataInput()
+    lapply(data, FUN = function(vsn) { meanSdPlot(vsn) } )
   })
   
 })
 
-getValues <- function(session){
-  ctx <- getCtx(session)
-  values <- list()
-  
-  values$data <- ctx %>% select(.y, .ri, .ci) %>%
-    group_by(.ci, .ri) %>%
-    summarise(.y = mean(.y)) # take the mean of multiple values per cell
-  
-  return(values)
+vsnOperator = function(df, calib.type) {
+  vsn2(as.matrix(acast(df, .ri ~ .ci, value.var = ".y")), calib = calib.type)
 }
 
+getData <- function(session){
+  ctx <- getCtx(session)
+  
+  normalization = ifelse(is.null(ctx$op.value('Normalization')), 'affine', ctx$op.value('Normalization'))
+  
+  data <- ctx %>% select(.y, .ri, .ci)
+  if (length(ctx$colors) >= 1) {
+    data <- data %>% mutate(grouping = "NA")
+  } else {
+    data <- data %>% mutate(grouping = "NA")
+  }
+  dlply(data, ~grouping, .fun = vsnOperator, calib.type = normalization)
+}

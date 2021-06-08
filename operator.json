@@ -1,7 +1,19 @@
 {
-  "name": "Template Shiny Operator",
-  "description": "Template to create a Shiny operator in Tercen.",
-  "tags": ["template"],
+  "name": "VSN",
+  "description": "Normalization: VSN (VSN with shiny interface app)",
+  "tags": ["normalization", "pamgene"],
   "authors": ["tercen"],
-  "urls": ["https://github.com/tercen/template_shiny_operator"]
+  "urls": ["https://github.com/tercen/vsn_shiny_operator"],
+  "properties": [
+  {
+    "kind": "EnumeratedProperty",
+    "name": "Normalization",
+    "defaultValue": "affine",
+    "description": "Type of normalization",
+	  "values": [
+      "affine",
+      "none"
+      ]
+  }
+  ]
 }
