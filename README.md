@@ -2,7 +2,7 @@
 
 ##### Description
 
-The `vsn_shiny operator` applies normalization using the VSN method and displays the result in a chart.
+The `vsn_shiny operator` applies normalization using the VSN method, displays the result in a chart and returns the normalized data.
 
 ##### Usage
 
@@ -20,6 +20,6 @@ Output relations|.
 
 ##### Details
 
-Apply Array Normalization using the VSN method. This can typically be used to correct for overall differences between samples. Applies the VSN R-package from [Bioconductor](http://bioconductor.org/packages/release/bioc/vignettes/vsn/inst/doc/vsn.pdf).
+Apply Array Normalization using the VSN method. This can typically be used to correct for overall differences between samples. Applies the VSN R-package from [Bioconductor](https://bioconductor.org/packages/release/bioc/manuals/vsn/man/vsn.pdf).
 The operator assumes 1 value per cell, the columns will be scaled towards each other.
 If you use a data color, the color will be used to stratify the columns into subgroups for which the scaling is performed separately.
