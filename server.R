@@ -24,8 +24,16 @@ getCtx <- function(session) {
 
 shinyServer(function(input, output, session) {
   
-  dataInput <- reactive({
-    getData(session)
+  context <- reactive({
+    getCtx(session)
+  })
+  
+  plotData <- reactive({
+    getPlotData(session)
+  })
+  
+  returnData <- reactive({
+    getReturnData(session)
   })
   
   output$body <- renderUI({
@@ -33,21 +41,38 @@ shinyServer(function(input, output, session) {
       shinyjs::useShinyjs(),
       tags$script(HTML('setInterval(function(){ $("#hiddenButton").click(); }, 1000*30);')),
       tags$footer(shinyjs::hidden(actionButton(inputId = "hiddenButton", label = "hidden"))),
-      plotOutput("main.plot", height = "800px"))
+      plotOutput("main.plot", height = "600px"),
+      HTML(paste("<center><h5>Click below to send data back to Tercen</h5>", actionButton("button", "Transform data")),"</center>")
+    )
   }) 
   
   output$main.plot <- renderPlot({
-    data <- dataInput()
+    data <- plotData()
     lapply(data, FUN = function(vsn) { meanSdPlot(vsn) } )
+  })
+  
+  observeEvent(input$button, {
+    shinyjs::disable("button")
+    
+    ctx <- context()
+    returnData() %>% 
+      ctx$addNamespace() %>% 
+      ctx$save()
   })
   
 })
 
-vsnOperator = function(df, calib.type) {
+vsnReturn <- function(vsn){
+  result <- melt(attr(vsn, "hx"))
+  colnames(result) = c(".ri", ".ci", "Hvsn")
+  result
+}
+
+vsnOperator <- function(df, calib.type) {
   vsn2(as.matrix(acast(df, .ri ~ .ci, value.var = ".y")), calib = calib.type)
 }
 
-getData <- function(session){
+getPlotData <- function(session){
   ctx <- getCtx(session)
   
   normalization   <- ifelse(is.null(ctx$op.value('Normalization')), 'affine', ctx$op.value('Normalization'))
@@ -61,4 +86,10 @@ getData <- function(session){
   }
   data <- data %>% mutate(grouping = grouping_values)
   dlply(data, ~grouping, .fun = vsnOperator, calib.type = normalization)
+}
+
+getReturnData <- function(session) {
+  plot_data <- getPlotData(session)
+  result    <- ldply(plot_data, .fun = vsnReturn)
+  result %>% select(-grouping)
 }
