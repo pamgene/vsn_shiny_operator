@@ -74,9 +74,16 @@ server <- shinyServer(function(input, output, session) {
           tags$hr(),
           HTML(paste("<center><h5>Click below to send data back to Tercen</h5>", actionButton("button", "Transform data")),"</center>")
         )
-      } else {
-        browser()
       }
+    }
+  })
+  
+  observeEvent(viewer$view, {
+    view <- viewer$view
+    if (isRunView(viewer$view)) {
+      nid <<- showNotification("Press Run to start the analysis.", duration = NULL, type = "message", closeButton = FALSE)
+    } else {
+      removeNotification(nid)
     }
   })
   
@@ -128,8 +135,8 @@ server <- shinyServer(function(input, output, session) {
       })
       
       if (input$start > 0) {
-        nid <- showNotification(ui = "Running VSN ...", type = "message", closeButton = FALSE, duration = NULL)
-        if (ncol(color_df) >= 1) {
+        showNotification(ui = "Running VSN ...", id = nid, type = "message", closeButton = FALSE, duration = NULL)
+        if (!is.null(color_df) && ncol(color_df) >= 1) {
           grouping <- droplevels(interaction(color_df))
         } else {
           grouping <- "Main"
@@ -226,7 +233,11 @@ getData <- function(session) {
   
   result$df       <- ctx %>% select(.y, .ri, .ci)
   result$col_df   <- ctx$cselect()
-  result$color_df <- ctx$select(ctx$colors)
+  if (identical(ctx$colors, list())) {
+    result$color_df <- NULL 
+  } else {
+    result$color_df <- ctx$select(ctx$colors)
+  }
   result
 }
 
