@@ -4,17 +4,5 @@
   "tags": ["normalization", "pamgene"],
   "authors": ["tercen"],
   "urls": ["https://github.com/tercen/vsn_shiny_operator"],
-  "isViewOnly": false,
-  "properties": [
-  {
-    "kind": "EnumeratedProperty",
-    "name": "Normalization",
-    "defaultValue": "affine",
-    "description": "Type of normalization",
-	  "values": [
-      "affine",
-      "none"
-      ]
-  }
-  ]
+  "isViewOnly": false
 }
