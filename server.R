@@ -66,7 +66,7 @@ server <- shinyServer(function(input, output, session) {
         results$reslist   <- computedResults$reslist
         
         tagList(
-          selectInput("group", "Show meanSdPlot for", choices = ""),
+          selectInput("group", "Show meanSdPlot for", choices = results$vsnResult$grp),
           plotOutput("msplot"),
           verbatimTextOutput("ref"),
           tags$hr(),
@@ -89,9 +89,7 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$switchToRun, {
     if (input$switchToRun == 0) {
-      results$analysis_done <- FALSE
     } else {
-      results$analysis_done <- TRUE
       viewer$view <- "run"
     }
   })
@@ -169,7 +167,6 @@ server <- shinyServer(function(input, output, session) {
 
         # save objects in tercen context
         saveData(session, list(df = df, vsnResult = vsnResult, hdf = hdf, reslist = reslist))
-        results$analysis_done <- TRUE
         shinyjs::enable("switchToResult")
         showNotification(ui = "Done", id = nid, type = "message", closeButton = FALSE)
         return("Done")
@@ -189,13 +186,6 @@ server <- shinyServer(function(input, output, session) {
   })
   
   ## Results
-  
-  observeEvent(results$vsnResult, {
-    vsnResult <- results$vsnResult
-    if (!is.null(vsnResult)) {
-      updateSelectInput(session, "group", choices = vsnResult$grp)
-    }
-  })
   
   output$msplot = renderPlot({
     req(input$group)
@@ -327,6 +317,10 @@ getCtxResults <- function(session) {
     bytes    <- ctx$client$fileService$download(file$id)
     raw_con  <- rawConnection(object = bytes, open = "r")
     result   <- readRDS(raw_con)
+    # check if input data is equal
+    if (!inputDataEqual(ctx, result)) {
+      result <- NULL
+    }
   }
   result
 }
