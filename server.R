@@ -44,7 +44,14 @@ server <- shinyServer(function(input, output, session) {
   
   output$body <- renderUI({
     view        <- viewer$view
-    upload_html <- HTML(paste("<center><h5>Click below to send data back to Tercen</h5>", disabled(actionButton("button", "Transform data"))),"</center>")
+    upload_html <- function(enableButton = TRUE) {
+      if (enableButton) {
+        button_html <- actionButton("button", "Transform data") 
+      } else {
+        button_html <- disabled(actionButton("button", "Transform data"))
+      }
+      HTML(paste("<center><h5>Click below to send data back to Tercen</h5>", button_html),"</center>")
+    }
     
     if (isRunView(view)) {
       tagList(
@@ -59,7 +66,7 @@ server <- shinyServer(function(input, output, session) {
         tags$hr(),
         disabled(actionButton("switchToResult", "Switch to Results View")),
         tags$hr(),
-        upload_html
+        upload_html(FALSE)
       )
     } else if (isResultView(view)) {
       computedResults     <- getCtxResults(session)
@@ -76,7 +83,7 @@ server <- shinyServer(function(input, output, session) {
           tags$hr(),
           actionButton("switchToRun", "Switch to Run Analysis View"),
           tags$hr(),
-          upload_html
+          upload_html()
         )
       }
     }
