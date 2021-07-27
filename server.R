@@ -43,7 +43,9 @@ server <- shinyServer(function(input, output, session) {
   })
   
   output$body <- renderUI({
-    view <- viewer$view
+    view        <- viewer$view
+    upload_html <- HTML(paste("<center><h5>Click below to send data back to Tercen</h5>", disabled(actionButton("button", "Transform data"))),"</center>")
+    
     if (isRunView(view)) {
       tagList(
         checkboxInput("affine", "Affine normalization", value = TRUE),
@@ -55,7 +57,9 @@ server <- shinyServer(function(input, output, session) {
         actionButton("start", "Run"),
         verbatimTextOutput("status"),
         tags$hr(),
-        disabled(actionButton("switchToResult", "Switch to Results View"))
+        disabled(actionButton("switchToResult", "Switch to Results View")),
+        tags$hr(),
+        upload_html
       )
     } else if (isResultView(view)) {
       computedResults     <- getCtxResults(session)
@@ -72,7 +76,7 @@ server <- shinyServer(function(input, output, session) {
           tags$hr(),
           actionButton("switchToRun", "Switch to Run Analysis View"),
           tags$hr(),
-          HTML(paste("<center><h5>Click below to send data back to Tercen</h5>", actionButton("button", "Transform data")),"</center>")
+          upload_html
         )
       }
     }
@@ -117,16 +121,16 @@ server <- shinyServer(function(input, output, session) {
     color_df <- data$color_df
     array_labels <- colnames(col_df)
     
-    updateSelectInput(session,  inputId = "reffactor", choices = array_labels)
-    rf <- factor(col_df[[array_labels[1]]])
-    updateSelectInput(session, inputId = "reflevel", choices = levels(rf))
+    observeEvent(input$refset, {
+      updateSelectInput(session,  inputId = "reffactor", choices = array_labels)
+    })
+    
+    observeEvent(input$reffactor, {
+      rf <- factor(col_df[[input$reffactor]])
+      updateSelectInput(session, inputId = "reflevel", choices = levels(rf))
+    })
     
     output$status = renderText({
-      
-      observeEvent(input$reffactor, {
-        rf <- factor(col_df[[input$reffactor]])
-        updateSelectInput(session, inputId = "reflevel", choices = levels(rf))
-      })
       
       isolate({
         bRef <- input$refset
@@ -147,6 +151,8 @@ server <- shinyServer(function(input, output, session) {
             hdf       <- vsnResult %>% group_by(grp) %>% do(vsnh(.))
             reslist   <- list(vsnResult = vsnResult)
           } else {
+            col_df       <- col_df %>% mutate(.ci = seq(0, nrow(.) - 1))
+            df           <- df %>% left_join(col_df %>% select(input$reffactor, .ci))
             df$RefFactor <- factor(df[[input$reffactor]])
             df$RefFactor <- relevel(df$RefFactor, ref = input$reflevel)
             vsnResult    <- df %>% group_by(grp) %>% do(vsnr(., normalization = input$affine))
@@ -168,6 +174,7 @@ server <- shinyServer(function(input, output, session) {
         # save objects in tercen context
         saveData(session, list(df = df, vsnResult = vsnResult, hdf = hdf, reslist = reslist))
         shinyjs::enable("switchToResult")
+        shinyjs::enable("button")
         showNotification(ui = "Done", id = nid, type = "message", closeButton = FALSE)
         return("Done")
       } else {

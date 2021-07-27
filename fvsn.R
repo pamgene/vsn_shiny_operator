@@ -8,22 +8,26 @@ vsn0 = function(df, normalization = TRUE) {
   data.table(vsn = list(res))
 }
 
-vsnr = function(df, normalization = TRUE){
-  X = acast(df, rowSeq ~ colSeq)
-  R = acast(df %>% filter(RefFactor == levels(RefFactor)[1]), rowSeq ~ colSeq)
+vsnr = function(df, normalization = TRUE) {
+  X <- acast(df, .ri ~ .ci, value.var = ".y")
+  R <- acast(df %>% filter(RefFactor == levels(RefFactor)[1]), .ri ~ .ci, value.var = ".y")
   
-  if(dim(X)[1] != dim(R)[1]){
+  if (dim(X)[1] != dim(R)[1]) {
     stop("Number of rows in data and reference do not match")
   }
   
-  if(all(rownames(X) == rownames(R))){
-    aRef = vsn2(R, calib = ifelse(normalization, "affine", "none"))
-    aVsn = vsn2(X, reference = aRef, calib = ifelse(normalization, "affine", "none"))
-    result = data.table(vsn = list(aVsn))
+  if (ncol(R) < 2) {
+    stop("The filtered data needs to span at least two columns.")
+  }
+  
+  if (all(rownames(X) == rownames(R))) {
+    aRef   <- vsn2(R, calib = ifelse(normalization, "affine", "none"))
+    aVsn   <- vsn2(X, reference = aRef, calib = ifelse(normalization, "affine", "none"))
+    result <- data.table(vsn = list(aVsn))
   } else {
     stop("IDs of data and reference do not match")
   }
-  return(result)
+  result
 }
 
 vsnh = function(dt) {
