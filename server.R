@@ -5,6 +5,7 @@ library(dplyr)
 library(hexbin)
 library(shinyjs)
 source("fvsn.R")
+source("supporting.R")
 
 ############################################
 #### This part should not be modified
@@ -24,7 +25,7 @@ getCtx <- function(session) {
 server <- shinyServer(function(input, output, session) {
   
   results <- reactiveValues()
-  viewer  <- reactiveValues(view = "run")
+  message <- reactiveValues(text = "")
   
   context <- reactive({
     getCtx(session)
@@ -38,37 +39,18 @@ server <- shinyServer(function(input, output, session) {
     results$hdf
   })
   
-  getComputedResults <- reactive({
-    getCtxResults(session)
+  mode <- reactive({ 
+    getMode(session) 
   })
   
   output$body <- renderUI({
-    view        <- viewer$view
-    upload_html <- function(enableButton = TRUE) {
-      if (enableButton) {
-        button_html <- actionButton("button", "Transform data") 
-      } else {
-        button_html <- disabled(actionButton("button", "Transform data"))
-      }
-      HTML(paste("<center><h5>Click below to send data back to Tercen</h5>", button_html),"</center>")
-    }
-    
-    if (isRunView(view)) {
-      tagList(
-        checkboxInput("affine", "Affine normalization", value = TRUE),
-        checkboxInput("refset", "Use reference data", value = FALSE),
-        conditionalPanel(condition = 'input.refset',
-                         selectInput("reffactor", "Reference annotation factor", choices = list(), selected = "nothing"),
-                         selectInput("reflevel",  "Reference annotation level", choices = list())
-        ),
-        actionButton("start", "Run"),
-        verbatimTextOutput("status"),
-        tags$hr(),
-        disabled(actionButton("switchToResult", "Switch to Results View")),
-        tags$hr(),
-        upload_html(FALSE)
-      )
-    } else if (isResultView(view)) {
+    mode <- mode()
+
+    if (isShowView(mode)) {
+      createInitialView(disableRun = TRUE)
+    } else if (isRunView(mode)) {
+      createInitialView()
+    } else if (isResultView(mode)) {
       computedResults     <- getCtxResults(session)
       if (!is.null(computedResults)) {
         results$df        <- computedResults$df
@@ -81,122 +63,10 @@ server <- shinyServer(function(input, output, session) {
           plotOutput("msplot"),
           verbatimTextOutput("ref"),
           tags$hr(),
-          actionButton("switchToRun", "Switch to Run Analysis View"),
-          tags$hr(),
           upload_html()
         )
       }
     }
-  })
-  
-  observeEvent(viewer$view, {
-    view <- viewer$view
-    if (isRunView(viewer$view)) {
-      nid <<- showNotification("Press Run to start the analysis.", duration = NULL, type = "message", closeButton = FALSE)
-    } else {
-      removeNotification(nid)
-    }
-  })
-  
-  observeEvent(input$switchToRun, {
-    if (input$switchToRun == 0) {
-    } else {
-      viewer$view <- "run"
-    }
-  })
-  
-  observeEvent(input$switchToResult, {
-    if (input$switchToResult == 0) {
-    } else {
-      viewer$view <- "showResult"
-    }
-  })
-  
-  observeEvent(getComputedResults(), {
-    results <- getComputedResults()
-    if (is.null(results)) {
-      viewer$view <- "run"
-    } else {
-      viewer$view <- "showResult"
-    }
-  })
-  
-  observe({
-    data     <- inputData()
-    df       <- data$df
-    col_df   <- data$col_df
-    color_df <- data$color_df
-    array_labels <- colnames(col_df)
-    
-    observeEvent(input$refset, {
-      updateSelectInput(session,  inputId = "reffactor", choices = array_labels)
-    })
-    
-    observeEvent(input$reffactor, {
-      rf <- factor(col_df[[input$reffactor]])
-      updateSelectInput(session, inputId = "reflevel", choices = levels(rf))
-    })
-    
-    output$status = renderText({
-      
-      isolate({
-        bRef <- input$refset
-      })
-      
-      if (input$start > 0) {
-        showNotification(ui = "Running VSN ...", id = nid, type = "message", closeButton = FALSE, duration = NULL)
-        if (!is.null(color_df) && ncol(color_df) >= 1) {
-          grouping <- droplevels(interaction(color_df))
-        } else {
-          grouping <- "Main"
-        }
-        df <- data.frame(df, grp = grouping)
-        hdf <- vsnResult <- NULL
-        isolate({
-          if (!bRef) {
-            vsnResult <- df %>% group_by(grp) %>% do(vsn0(., normalization = input$affine))
-            hdf       <- vsnResult %>% group_by(grp) %>% do(vsnh(.))
-            reslist   <- list(vsnResult = vsnResult)
-          } else {
-            col_df       <- col_df %>% mutate(.ci = seq(0, nrow(.) - 1))
-            df           <- df %>% left_join(col_df %>% select(input$reffactor, .ci))
-            df$RefFactor <- factor(df[[input$reffactor]])
-            df$RefFactor <- relevel(df$RefFactor, ref = input$reflevel)
-            vsnResult    <- df %>% group_by(grp) %>% do(vsnr(., normalization = input$affine))
-            hdf          <- vsnResult %>% group_by(grp) %>% do(vsnh(.))
-            reslist      <- list(vsnResult = vsnResult)
-          }
-          settings = list(affine = input$affine,
-                          refset = input$refset,
-                          reffactor = input$reffactor,
-                          reflevel = input$reflevel)
-        })
-        reslist$settings <- settings
-        reslist$df <- df
-        hdf        <- hdf[,-1]
-        hdf        <- hdf[!is.na(hdf$Hvsn),]
-        hdf$.ri    <- as.double(hdf$.ri)
-        hdf$.ci    <- as.double(hdf$.ci)
-
-        # save objects in tercen context
-        saveData(session, list(df = df, vsnResult = vsnResult, hdf = hdf, reslist = reslist))
-        shinyjs::enable("switchToResult")
-        shinyjs::enable("button")
-        showNotification(ui = "Done", id = nid, type = "message", closeButton = FALSE)
-        return("Done")
-      } else {
-        return(".")
-      }
-    })
-  })
-
-  observeEvent(input$button, {
-    shinyjs::disable("button")
-    
-    ctx <- context()
-    returnData() %>% 
-      ctx$addNamespace() %>% 
-      ctx$save()
   })
   
   ## Results
@@ -217,6 +87,101 @@ server <- shinyServer(function(input, output, session) {
     } else {
       return("No reference data used.")
     }
+  })
+
+  ## Observe (event)s
+    
+  observe({
+    data     <- inputData()
+    col_df   <- data$col_df
+    array_labels <- colnames(col_df)
+    
+    observeEvent(input$refset, {
+      updateSelectInput(session,  inputId = "reffactor", choices = array_labels)
+    })
+    
+    observeEvent(input$reffactor, {
+      rf <- factor(col_df[[input$reffactor]])
+      updateSelectInput(session, inputId = "reflevel", choices = levels(rf))
+    })
+    
+    if (!is.null(input$start) && input$start == 0) {
+      message$text = "."
+    }
+    
+    output$status = renderText({ message$text })
+  })
+  
+  observeEvent(input$button, {
+    shinyjs::disable("button")
+    
+    ctx <- context()
+    returnData() %>% 
+      ctx$addNamespace() %>% 
+      ctx$save()
+  })
+  
+  observeEvent(mode(), {
+    mode <- mode()
+    if (isRunView(mode)) {
+      nid <<- showNotification("Press Run to start the analysis.", duration = NULL, type = "message", closeButton = FALSE)
+    } else if (isResultView(mode)) {
+      if (exists("nid")) { 
+        removeNotification(nid) 
+      }
+    }
+  })
+  
+  # calculation
+  observeEvent(input$start, {
+    shinyjs::disable("start")
+    showNotification(ui = "Running VSN ...", id = nid, type = "message", closeButton = FALSE, duration = NULL)
+    
+    data     <- inputData()
+    df       <- data$df
+    col_df   <- data$col_df
+    color_df <- data$color_df
+    bRef     <- input$refset
+    
+    if (!is.null(color_df) && ncol(color_df) >= 1) {
+      grouping <- droplevels(interaction(color_df))
+    } else {
+      grouping <- "Main"
+    }
+    
+    df <- data.frame(df, grp = grouping)
+    hdf <- vsnResult <- NULL
+    if (!bRef) {
+      vsnResult <- df %>% group_by(grp) %>% do(vsn0(., normalization = input$affine))
+      hdf       <- vsnResult %>% group_by(grp) %>% do(vsnh(.))
+      reslist   <- list(vsnResult = vsnResult)
+    } else {
+      col_df       <- col_df %>% mutate(.ci = seq(0, nrow(.) - 1))
+      df           <- df %>% left_join(col_df %>% select(input$reffactor, .ci))
+      df$RefFactor <- factor(df[[input$reffactor]])
+      df$RefFactor <- relevel(df$RefFactor, ref = input$reflevel)
+      vsnResult    <- df %>% group_by(grp) %>% do(vsnr(., normalization = input$affine))
+      hdf          <- vsnResult %>% group_by(grp) %>% do(vsnh(.))
+      reslist      <- list(vsnResult = vsnResult)
+    }
+    settings = list(affine = input$affine,
+                    refset = input$refset,
+                    reffactor = input$reffactor,
+                    reflevel = input$reflevel)
+    
+    reslist$settings <- settings
+    reslist$df <- df
+    hdf        <- hdf[,-1]
+    hdf        <- hdf[!is.na(hdf$Hvsn),]
+    hdf$.ri    <- as.double(hdf$.ri)
+    hdf$.ci    <- as.double(hdf$.ci)
+    
+    # save objects in tercen context
+    saveData(session, list(df = df, vsnResult = vsnResult, hdf = hdf, reslist = reslist))
+    shinyjs::enable("button")
+    showNotification(ui = "Done", id = nid, type = "message", closeButton = FALSE)
+    message$text <- "Done"
+    shinyjs::enable("start")
   })
   
 })
@@ -267,6 +232,11 @@ removeCurrentFiles <- function(session, workflowId, stepId) {
   for (file in files) {
     ctx$client$fileService$delete(file$id, file$rev)
   }
+}
+
+getMode = function(session){
+  query = parseQueryString(session$clientData$url_search)
+  return(query[["mode"]])
 }
 
 saveData <- function(session, result_list) {
@@ -348,9 +318,12 @@ inputDataEqual <- function(ctx, results) {
   result
 }
 
-isRunView <- function(view) {
-  view == "run"
+isShowView <- function(mode) {
+  !is.null(mode) && mode == "show"
 }
-isResultView <- function(view) {
-  view == "showResult"
+isRunView <- function(mode) {
+  !is.null(mode) && mode == "run"
+}
+isResultView <- function(mode) {
+  !is.null(mode) && mode == "showResult"
 }
