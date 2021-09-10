@@ -267,6 +267,14 @@ saveData <- function(session, result_list) {
   bytes        <- rawConnectionValue(con)
   removeCurrentFiles(session, workflowId, stepId)
   fileDoc <- ctx$client$fileService$upload(fileDoc, bytes)
+  
+  # call save to indicate step has a result
+  ctx %>%
+    select(.y, .ci, .ri) %>%
+    group_by(.ci, .ri) %>%
+    summarise(mean = mean(.y)) %>%
+    ctx$addNamespace() %>%
+    ctx$save()
 }
 
 getFilesByWorkflowAndStep <- function(ctx, workflowId, stepId) {
