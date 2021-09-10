@@ -178,12 +178,16 @@ server <- shinyServer(function(input, output, session) {
     
     # save objects in tercen context
     saveData(session, list(df = df, vsnResult = vsnResult, hdf = hdf, reslist = reslist))
-    shinyjs::enable("button")
+    results$df        <- df
+    results$vsnResult <- vsnResult
+    results$hdf       <- hdf
+    results$reslist   <- reslist
+    
     showNotification(ui = "Done", id = nid, type = "message", closeButton = FALSE)
     message$text <- "Done"
+    shinyjs::enable("button")
     shinyjs::enable("start")
   })
-  
 })
 
 vsnReturn <- function(vsn){
@@ -267,14 +271,6 @@ saveData <- function(session, result_list) {
   bytes        <- rawConnectionValue(con)
   removeCurrentFiles(session, workflowId, stepId)
   fileDoc <- ctx$client$fileService$upload(fileDoc, bytes)
-  
-  # call save to indicate step has a result
-  ctx %>%
-    select(.y, .ci, .ri) %>%
-    group_by(.ci, .ri) %>%
-    summarise(mean = mean(.y)) %>%
-    ctx$addNamespace() %>%
-    ctx$save()
 }
 
 getFilesByWorkflowAndStep <- function(ctx, workflowId, stepId) {
