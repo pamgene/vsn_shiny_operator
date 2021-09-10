@@ -9,23 +9,28 @@ vsn0 = function(df, normalization = TRUE) {
 }
 
 vsnr = function(df, normalization = TRUE) {
-  X <- acast(df, .ri ~ .ci, value.var = ".y")
-  R <- acast(df %>% filter(RefFactor == levels(RefFactor)[1]), .ri ~ .ci, value.var = ".y")
+  result <- data.table()
+  X      <- acast(df, .ri ~ .ci, value.var = ".y")
+  df_ref <- df %>% filter(RefFactor == levels(RefFactor)[1])
   
-  if (dim(X)[1] != dim(R)[1]) {
-    stop("Number of rows in data and reference do not match")
-  }
-  
-  if (ncol(R) < 2) {
-    stop("The filtered data needs to span at least two columns.")
-  }
-  
-  if (all(rownames(X) == rownames(R))) {
-    aRef   <- vsn2(R, calib = ifelse(normalization, "affine", "none"))
-    aVsn   <- vsn2(X, reference = aRef, calib = ifelse(normalization, "affine", "none"))
-    result <- data.table(vsn = list(aVsn))
-  } else {
-    stop("IDs of data and reference do not match")
+  if (nrow(df_ref) > 0) {
+    R <- acast(df_ref, .ri ~ .ci, value.var = ".y")
+    
+    if (dim(X)[1] != dim(R)[1]) {
+      stop("Number of rows in data and reference do not match")
+    }
+    
+    if (ncol(R) < 2) {
+      stop("The filtered data needs to span at least two columns.")
+    }
+    
+    if (all(rownames(X) == rownames(R))) {
+      aRef   <- vsn2(R, calib = ifelse(normalization, "affine", "none"))
+      aVsn   <- vsn2(X, reference = aRef, calib = ifelse(normalization, "affine", "none"))
+      result <- data.table(vsn = list(aVsn))
+    } else {
+      stop("IDs of data and reference do not match")
+    }
   }
   result
 }

@@ -89,7 +89,7 @@ server <- shinyServer(function(input, output, session) {
     }
   })
 
-  ## Observe (event)s
+  ## Observe (event)
     
   observe({
     data     <- inputData()
@@ -105,7 +105,8 @@ server <- shinyServer(function(input, output, session) {
       updateSelectInput(session, inputId = "reflevel", choices = levels(rf))
     })
     
-    if (!is.null(input$start) && input$start == 0) {
+    start_value <- isolate(input$start)
+    if (!is.null(start_value) && start_value == 0) {
       message$text = "."
     }
     
@@ -151,42 +152,49 @@ server <- shinyServer(function(input, output, session) {
     
     df <- data.frame(df, grp = grouping)
     hdf <- vsnResult <- NULL
-    if (!bRef) {
-      vsnResult <- df %>% group_by(grp) %>% do(vsn0(., normalization = input$affine))
-      hdf       <- vsnResult %>% group_by(grp) %>% do(vsnh(.))
-      reslist   <- list(vsnResult = vsnResult)
-    } else {
-      col_df       <- col_df %>% mutate(.ci = seq(0, nrow(.) - 1))
-      df           <- df %>% left_join(col_df %>% select(input$reffactor, .ci))
-      df$RefFactor <- factor(df[[input$reffactor]])
-      df$RefFactor <- relevel(df$RefFactor, ref = input$reflevel)
-      vsnResult    <- df %>% group_by(grp) %>% do(vsnr(., normalization = input$affine))
-      hdf          <- vsnResult %>% group_by(grp) %>% do(vsnh(.))
-      reslist      <- list(vsnResult = vsnResult)
-    }
-    settings = list(affine = input$affine,
-                    refset = input$refset,
-                    reffactor = input$reffactor,
-                    reflevel = input$reflevel)
-    
-    reslist$settings <- settings
-    reslist$df <- df
-    hdf        <- hdf[,-1]
-    hdf        <- hdf[!is.na(hdf$Hvsn),]
-    hdf$.ri    <- as.double(hdf$.ri)
-    hdf$.ci    <- as.double(hdf$.ci)
-    
-    # save objects in tercen context
-    saveData(session, list(df = df, vsnResult = vsnResult, hdf = hdf, reslist = reslist))
-    results$df        <- df
-    results$vsnResult <- vsnResult
-    results$hdf       <- hdf
-    results$reslist   <- reslist
-    
-    showNotification(ui = "Done", id = nid, type = "message", closeButton = FALSE)
-    message$text <- "Done"
-    shinyjs::enable("button")
-    shinyjs::enable("start")
+    tryCatch({
+      if (!bRef) {
+        vsnResult <- df %>% group_by(grp) %>% do(vsn0(., normalization = input$affine))
+        hdf       <- vsnResult %>% group_by(grp) %>% do(vsnh(.))
+        reslist   <- list(vsnResult = vsnResult)
+      } else {
+        col_df       <- col_df %>% mutate(.ci = seq(0, nrow(.) - 1))
+        df           <- df %>% left_join(col_df %>% select(input$reffactor, .ci))
+        df$RefFactor <- factor(df[[input$reffactor]])
+        df$RefFactor <- relevel(df$RefFactor, ref = input$reflevel)
+        vsnResult    <- df %>% group_by(grp) %>% do(vsnr(., normalization = input$affine))
+        hdf          <- vsnResult %>% group_by(grp) %>% do(vsnh(.))
+        reslist      <- list(vsnResult = vsnResult)
+      }
+      settings = list(affine = input$affine,
+                      refset = input$refset,
+                      reffactor = input$reffactor,
+                      reflevel = input$reflevel)
+      
+      reslist$settings <- settings
+      reslist$df <- df
+      hdf        <- hdf[,-1]
+      hdf        <- hdf[!is.na(hdf$Hvsn),]
+      hdf$.ri    <- as.double(hdf$.ri)
+      hdf$.ci    <- as.double(hdf$.ci)
+      
+      # save objects in tercen context
+      saveData(session, list(df = df, vsnResult = vsnResult, hdf = hdf, reslist = reslist))
+      results$df        <- df
+      results$vsnResult <- vsnResult
+      results$hdf       <- hdf
+      results$reslist   <- reslist
+      
+      showNotification(ui = "Done", id = nid, type = "message", closeButton = FALSE)
+      message$text <- "Done"
+      shinyjs::enable("button")
+      shinyjs::enable("start")
+      
+    }, error = function(e) {
+      showNotification(ui = "Done with errors", id = nid, type = "message", closeButton = FALSE)
+      message$text <- e$message
+      shinyjs::enable("start")
+    })
   })
 })
 
