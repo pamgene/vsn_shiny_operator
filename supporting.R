@@ -27,7 +27,7 @@ createInitialView <- function(disableRun = FALSE) {
                      selectInput("reflevel",  "Reference annotation level", choices = list())
     ),
     run_button(disableRun),
-    verbatimTextOutput("status"),
+    uiOutput("status"),
     tags$hr(),
     upload_html(FALSE)
   )

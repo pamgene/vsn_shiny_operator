@@ -25,7 +25,7 @@ getCtx <- function(session) {
 server <- shinyServer(function(input, output, session) {
   
   results <- reactiveValues()
-  message <- reactiveValues(text = "")
+  message <- reactiveValues(text = NULL, error = NULL)
   
   context <- reactive({
     getCtx(session)
@@ -88,6 +88,16 @@ server <- shinyServer(function(input, output, session) {
       return("No reference data used.")
     }
   })
+  
+  output$status = renderUI({
+    result <- NULL
+    if (!is.null(message$text)) {
+      result <- message$text
+    } else if (!is.null(message$error)) {
+      result <- HTML(paste("<div style='color: red'>", message$error, "</div>"))
+    }
+    result
+  })
 
   ## Observe (event)
     
@@ -109,8 +119,6 @@ server <- shinyServer(function(input, output, session) {
     if (!is.null(start_value) && start_value == 0) {
       message$text = "."
     }
-    
-    output$status = renderText({ message$text })
   })
   
   observeEvent(input$button, {
@@ -186,13 +194,15 @@ server <- shinyServer(function(input, output, session) {
       results$reslist   <- reslist
       
       showNotification(ui = "Done", id = nid, type = "message", closeButton = FALSE)
-      message$text <- "Done"
+      message$text  <- "Done"
+      message$error <- NULL
       shinyjs::enable("button")
       shinyjs::enable("start")
       
     }, error = function(e) {
       showNotification(ui = "Done with errors", id = nid, type = "message", closeButton = FALSE)
-      message$text <- e$message
+      message$text  <- NULL
+      message$error <- e$message
       shinyjs::enable("start")
     })
   })
