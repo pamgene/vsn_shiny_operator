@@ -203,6 +203,7 @@ server <- shinyServer(function(input, output, session) {
       showNotification(ui = "Done with errors", id = nid, type = "message", closeButton = FALSE)
       message$text  <- NULL
       message$error <- e$message
+      shinyjs::disable("button")
       shinyjs::enable("start")
     })
   })
