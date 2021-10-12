@@ -209,16 +209,6 @@ server <- shinyServer(function(input, output, session) {
   })
 })
 
-vsnReturn <- function(vsn){
-  result <- melt(attr(vsn, "hx"))
-  colnames(result) = c(".ri", ".ci", "Hvsn")
-  result
-}
-
-vsnOperator <- function(df, calib.type) {
-  vsn2(as.matrix(acast(df, .ri ~ .ci, value.var = ".y")), calib = calib.type)
-}
-
 getData <- function(session) {
   result <- list()
   ctx    <- getCtx(session)
