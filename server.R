@@ -98,6 +98,8 @@ server <- shinyServer(function(input, output, session) {
     }
     result
   })
+  
+  output$runMessage <- renderUI({HTML("<i>Run button is only active when you 'Run' the operator from the Tercen view.</i>")})
 
   ## Observe (event)
     

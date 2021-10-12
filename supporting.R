@@ -3,9 +3,12 @@
 run_button <- function(disabled = FALSE) {
   button <- actionButton("start", "Run")
   if (disabled) {
-    button <- disabled(button)
+    result <- tagList(disabled(button),
+                      htmlOutput("runMessage"))
+  } else {
+    result <- button
   }
-  button
+  result
 }
 
 upload_html <- function(enableButton = TRUE) {
