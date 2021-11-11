@@ -61,9 +61,7 @@ server <- shinyServer(function(input, output, session) {
         tagList(
           selectInput("group", "Show meanSdPlot for", choices = results$vsnResult$grp),
           plotOutput("msplot"),
-          verbatimTextOutput("ref"),
-          tags$hr(),
-          upload_html()
+          verbatimTextOutput("ref")
         )
       }
     }
@@ -121,15 +119,6 @@ server <- shinyServer(function(input, output, session) {
     if (!is.null(start_value) && start_value == 0) {
       message$text = "."
     }
-  })
-  
-  observeEvent(input$button, {
-    shinyjs::disable("button")
-    
-    ctx <- context()
-    returnData() %>% 
-      ctx$addNamespace() %>% 
-      ctx$save()
   })
   
   observeEvent(mode(), {
@@ -195,17 +184,20 @@ server <- shinyServer(function(input, output, session) {
       results$hdf       <- hdf
       results$reslist   <- reslist
       
+      ctx <- context()
+      returnData() %>% 
+        ctx$addNamespace() %>% 
+        ctx$save()
+      
       showNotification(ui = "Done", id = nid, type = "message", closeButton = FALSE)
       message$text  <- "Done"
       message$error <- NULL
-      shinyjs::enable("button")
       shinyjs::enable("start")
       
     }, error = function(e) {
       showNotification(ui = "Done with errors", id = nid, type = "message", closeButton = FALSE)
       message$text  <- NULL
       message$error <- e$message
-      shinyjs::disable("button")
       shinyjs::enable("start")
     })
   })

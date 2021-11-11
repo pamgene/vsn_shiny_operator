@@ -11,15 +11,6 @@ run_button <- function(disabled = FALSE) {
   result
 }
 
-upload_html <- function(enableButton = TRUE) {
-  if (enableButton) {
-    button_html <- actionButton("button", "Transform data") 
-  } else {
-    button_html <- disabled(actionButton("button", "Transform data"))
-  }
-  HTML(paste("<center><h5>Click below to send data back to Tercen</h5>", button_html),"</center>")
-}
-
 # initial view for show and run mode
 createInitialView <- function(disableRun = FALSE) {
   tagList(
@@ -31,8 +22,6 @@ createInitialView <- function(disableRun = FALSE) {
     ),
     run_button(disableRun),
     tags$p(),
-    uiOutput("status"),
-    tags$hr(),
-    upload_html(FALSE)
+    uiOutput("status")
   )
 }
