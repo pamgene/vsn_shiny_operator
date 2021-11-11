@@ -302,6 +302,7 @@ getResultsFile = function(session, name) {
   if (length(files) > 0) {
     files <- files[unlist(lapply(files, FUN = function(x) x$name == name))]
     if (!identical(files, list())) {
+      files  <- files[rev(order(unlist(lapply(files, FUN = function(x) x$createdDate$value))))]
       result <- files[[1]]
     }
   } 
