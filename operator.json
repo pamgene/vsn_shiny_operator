@@ -3,6 +3,6 @@
   "description": "Normalization: VSN (VSN with shiny interface app)",
   "tags": ["normalization", "pamgene"],
   "authors": ["tercen"],
-  "urls": ["https://github.com/tercen/vsn_shiny_operator"],
-  "isViewOnly": false
+  "urls": ["https://github.com/pamgene/vsn_shiny_operator"],
+  "isViewOnly": [false]
 }
