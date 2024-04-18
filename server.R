@@ -174,8 +174,8 @@ server <- shinyServer(function(input, output, session) {
       reslist$df <- df
       hdf        <- hdf[,-1]
       hdf        <- hdf[!is.na(hdf$Hvsn),]
-      hdf$.ri    <- as.double(hdf$.ri)
-      hdf$.ci    <- as.double(hdf$.ci)
+      #hdf$.ri    <- as.double(hdf$.ri)
+      #hdf$.ci    <- as.double(hdf$.ci)
       
       # save objects in tercen context
       saveData(session, list(df = df, vsnResult = vsnResult, hdf = hdf, reslist = reslist))
