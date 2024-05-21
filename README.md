@@ -2,7 +2,7 @@
 
 ##### Description
 
-The `vsn_shiny operator` applies normalization using the VSN method, displays the result in a chart and returns the normalized data.
+The `vsn_shiny operator` for Tercen applies normalization using the VSN method, displays the result in a chart and returns the normalized data.
 
 ##### Usage
 
